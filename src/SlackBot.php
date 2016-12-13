@@ -150,7 +150,7 @@ class SlackBot
 
         $status = $response->getStatusCode();
         $body = json_decode($response->getBody());
-        var_dump($body);
+        //var_dump($body);
         if ($body->ok) {
             // unqueue if successful
             $log->update(['q' => 0]);
