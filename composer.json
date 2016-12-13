@@ -1,5 +1,5 @@
 {
-    "name": "TheLHC/SlackBot",
+    "name": "thelhc/slack-bot",
     "description": "Laravel SlackBot Helper",
     "license": "MIT",
     "authors": [
