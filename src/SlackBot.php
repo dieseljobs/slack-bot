@@ -3,6 +3,7 @@
 namespace TheLHC\SlackBot;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
+use TheLHC\IpInfo\IpInfo;
 
 class SlackBot
 {
@@ -41,6 +42,13 @@ class SlackBot
      * @var string
      */
     private $emoji;
+
+    /**
+     * Result of IpInfo lookup
+     *
+     * @var stdClass
+     */
+    private $ipResult;
 
     /**
      * Setup new instance with configuration
@@ -130,6 +138,58 @@ class SlackBot
      */
     private function postLogToSlack($log)
     {
+        $message = $log->message;
+        $this->checkMessageIp($message);
+        dd($message);
+        if ($this->postMessageToSlack($message, $log->channel)) {
+            // unqueue if successful
+            $log->update(['q' => 0]);
+            sleep(1);
+        }
+    }
+
+    /**
+     * Check message for ip-tracker link
+     * If found, do an IpLookup to get details for IP and append details to message
+     *
+     * @param  string $message
+     * @return void
+     */
+    private function checkMessageIp(&$message)
+    {
+        preg_match(
+            '#http:\/\/www\.ip-tracker\.org\/locator\/ip-lookup\.php\?ip=(\d+\.\d+\.\d+\.\d+)#i',
+            $message,
+            $matches
+        );
+        // return if no matches
+        if (empty($matches[1])) return;
+        $ipInfo = new IpInfo(new \TheLHC\IpInfo\IpInfoRepository());
+        $ipLookup = $ipInfo->lookup($matches[1]);
+        // return if lookup fails
+        if ($ipLookup->status != 'success') return;
+        $ip = $ipLookup->results;
+        // store results
+        $this->ipResult = $ip;
+        // append to message 
+        $location = "";
+        if (property_exists($ip, 'city')) $location .= "     location:        *{$ip->city}";
+        if (property_exists($ip, 'region')) $location .= ", {$ip->region}";
+        if (property_exists($ip, 'region')) $location .= "* ({$ip->country})\r\n";
+        if (property_exists($ip, 'org')) $message .= " \r\n     organization: *{$ip->org}*\r\n";
+        $message .= $location;
+        if (property_exists($ip, 'hostname')) $message .= "     hostname:     *{$ip->hostname}* [_{$ip->ip}_]";
+    }
+
+    /**
+     * Push message to Slack API
+     *
+     * @param  string $message
+     * @param  string $channel
+     * @return boolean
+     */
+    private function postMessageToSlack($message, $channel)
+    {
         try {
             $response = $this->client->request('POST', 'chat.postMessage',
             [
@@ -138,10 +198,10 @@ class SlackBot
                     'token'     => $this->token,
                     'username'  => $this->username,
                     'icon_emoji'=> $this->emoji,
-                    'channel'   => $log->channel,
+                    'channel'   => $channel,
                     // send all messages with >>> so it's indented (creates vertical
                     // separation between messages)
-                    'text'      => ">>>{$log->message}"
+                    'text'      => ">>>{$message}"
                 ]
             ]);
         } catch (RequestException $e) {
@@ -150,11 +210,8 @@ class SlackBot
 
         $status = $response->getStatusCode();
         $body = json_decode($response->getBody());
-        //var_dump($body);
         if ($body->ok) {
-            // unqueue if successful
-            $log->update(['q' => 0]);
-            sleep(1);
+            return true;
         } else {
             // if bad authorization throw error
             if (property_exists($body, 'error') && $body->error == "invalid_auth") {
@@ -167,6 +224,7 @@ class SlackBot
             if ($status == 429) {
                 set_time_limit(180);
                 sleep(60);
+                return false;
             }
         }
     }

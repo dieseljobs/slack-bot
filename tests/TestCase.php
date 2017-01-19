@@ -6,6 +6,7 @@ use Orchestra\Testbench\TestCase as BaseTestCase;
 use TheLHC\SlackBot\SlackBotServiceProvider;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Schema\Builder;
+use Dotenv\Dotenv;
 
 class TestCase extends BaseTestCase
 {
@@ -33,11 +34,15 @@ class TestCase extends BaseTestCase
      */
     protected function getEnvironmentSetUp($app)
     {
+        $dotenv = new Dotenv(__DIR__);
+        $dotenv->load();
+
         $app['config']->set('database.default', 'testbench');
         $app['config']->set('database.connections.testbench', [
             'driver' => 'sqlite',
             'database' => ':memory:'
         ]);
+
     }
 
     /**
