@@ -65,4 +65,16 @@
     */
 
     'server_ip' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Blacklist Ips by Organization
+    |--------------------------------------------------------------------------
+    |
+    | block message if ipInfo lookup returns result with organization from the
+    | following.  Or leave blank
+    |
+    */
+
+    'blacklist_providers' => [],
 ];

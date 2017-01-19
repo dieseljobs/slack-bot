@@ -36,4 +36,12 @@ class SlackBotTest extends TestCase
         $chat = $slackBot->chat('test visitor ip http://www.ip-tracker.org/locator/ip-lookup.php?ip=72.224.209.56');
         $this->assertEquals(true, $chat);
     }
+
+    public function testSendsChatMessageWithIpLinkBlocked()
+    {
+        $this->app['config']->set('slack_bot.blacklist_providers', ['Amazon.com', 'Digital Ocean']);
+        $slackBot = $this->app->make('TheLHC\SlackBot\SlackBot');
+        $chat = $slackBot->chat('test visitor ip http://www.ip-tracker.org/locator/ip-lookup.php?ip=52.203.61.254');
+        $this->assertEquals(true, $chat);
+    }
 }

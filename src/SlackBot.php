@@ -51,6 +51,13 @@ class SlackBot
     private $ipResult;
 
     /**
+     * Providers to blacklist
+     *
+     * @var Array
+     */
+    private $blacklistProviders;
+
+    /**
      * Setup new instance with configuration
      *
      * @param Array $config
@@ -68,6 +75,7 @@ class SlackBot
         }
         $this->emoji = $config['emoji_icon'];
         $this->client = new Client(['base_uri' => $config['base_uri']]);
+        $this->blacklistProviders = $config['blacklist_providers'];
     }
 
     /**
@@ -138,9 +146,11 @@ class SlackBot
      */
     private function postLogToSlack($log)
     {
+        // result ipResult
+        $this->ipResult = null;
+        // set and check message
         $message = $log->message;
         $this->checkMessageIp($message);
-        dd($message);
         if ($this->postMessageToSlack($message, $log->channel)) {
             // unqueue if successful
             $log->update(['q' => 0]);
@@ -171,7 +181,7 @@ class SlackBot
         $ip = $ipLookup->results;
         // store results
         $this->ipResult = $ip;
-        // append to message 
+        // append to message
         $location = "";
         if (property_exists($ip, 'city')) $location .= "     location:        *{$ip->city}";
         if (property_exists($ip, 'region')) $location .= ", {$ip->region}";
@@ -190,6 +200,7 @@ class SlackBot
      */
     private function postMessageToSlack($message, $channel)
     {
+        if ($this->shouldBlockByProvider()) return true;
         try {
             $response = $this->client->request('POST', 'chat.postMessage',
             [
@@ -227,5 +238,23 @@ class SlackBot
                 return false;
             }
         }
+    }
+
+    /**
+     * Determine if message should be blocked by its provider
+     *
+     * @return boolean
+     */
+    private function shouldBlockByProvider()
+    {
+        if (!(
+            $this->ipResult and
+            property_exists($this->ipResult, 'org') and
+            !empty($this->blacklistProviders)
+        )) {
+            return false;
+        }
+        $pttrn = "#(".implode($this->blacklistProviders, "|").")#i";
+        return preg_match($pttrn, $this->ipResult->org);
     }
 }
