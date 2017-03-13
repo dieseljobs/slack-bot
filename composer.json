@@ -13,7 +13,7 @@
         "guzzlehttp/guzzle": "^6.2",
         "illuminate/database": "5.1.* || 5.2.* || 5.3.*",
         "illuminate/support": "5.1.* || 5.2.* || 5.3.*",
-        "thelhc/ip-info": "^1.0"
+        "thelhc/ip-info": "^1.0.3"
     },
     "require-dev": {
         "phpunit/phpunit": "^5.4",
