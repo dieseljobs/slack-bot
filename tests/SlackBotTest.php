@@ -44,4 +44,14 @@ class SlackBotTest extends TestCase
         $chat = $slackBot->chat('test visitor ip http://www.ip-tracker.org/locator/ip-lookup.php?ip=52.203.61.254');
         $this->assertEquals(true, $chat);
     }
+
+    public function testSendsWebhookMessage()
+    {
+        $this->app['config']->set('slack_bot.token', null);
+        $this->app['config']->set('slack_bot.webhook', env('SLACK_WEBHOOK'));
+        # $this->app['config']->set('slack_bot.username', env('SLACK_USERNAME'));
+        # $this->app['config']->set('slack_bot.emoji_icon', env('SLACK_EMOJI'));
+        $slackBot = $this->app->make('TheLHC\SlackBot\SlackBot');
+        $chat = $slackBot->chat('test message', env('SLACK_WEBHOOK_CHANNEL'));
+    }
 }

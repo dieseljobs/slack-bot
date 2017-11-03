@@ -37,6 +37,13 @@ class SlackBot
     private $token;
 
     /**
+     * Slack webhook
+     *
+     * @var string
+     */
+    private $webhook;
+
+    /**
      * Emoji icon
      *
      * @var string
@@ -66,6 +73,7 @@ class SlackBot
     {
         $this->defaultChannel = $config['default_channel'];
         $this->token = $config['token'];
+        $this->webhook = $config['webhook'];
         $this->username = $config['username'];
         // append server IP to title if specified
         if ($config['server_ip']) {
@@ -74,7 +82,11 @@ class SlackBot
             $this->username .= " [{$ip}]";
         }
         $this->emoji = $config['emoji_icon'];
-        $this->client = new Client(['base_uri' => $config['base_uri']]);
+        if ($this->token && !empty($config['base_uri'])) {
+            $this->client = new Client(['base_uri' => $config['base_uri']]);
+        } else {
+            $this->client = new Client();
+        }
         $this->blacklistProviders = $config['blacklist_providers'];
     }
 
@@ -201,6 +213,69 @@ class SlackBot
     private function postMessageToSlack($message, $channel)
     {
         if ($this->shouldBlockByProvider()) return true;
+        if ($this->webhook) {
+            return $this->postMessageToSlackByWebhook($message, $channel);
+        } elseif ($this->token) {
+            return $this->postMessageToSlackByToken($message, $channel);
+        } else {
+            throw new \Exception("You must set Slack Bot token or webhook to chat!");
+        }
+    }
+
+    /**
+     * Determine if message should be blocked by its provider
+     *
+     * @return boolean
+     */
+    private function shouldBlockByProvider()
+    {
+        if (!(
+            $this->ipResult and
+            property_exists($this->ipResult, 'org') and
+            !empty($this->blacklistProviders)
+        )) {
+            return false;
+        }
+        $pttrn = "#(".implode($this->blacklistProviders, "|").")#i";
+        return preg_match($pttrn, $this->ipResult->org);
+    }
+
+    /**
+     * Post message to slack via webhook
+     *
+     * @param  String  $message
+     * @param  String $channel
+     * @return Boolean
+     */
+    private function postMessageToSlackByWebhook($message, $channel)
+    {
+        try {
+            $response = $this->client->post($this->webhook, [
+                'json' => [
+                    'username'  => $this->username,
+                    'icon_emoji'=> $this->emoji,
+                    'channel'   => $channel,
+                    // send all messages with >>> so it's indented (creates vertical
+                    // separation between messages)
+                    'text'      => ">>>{$message}"
+                ]
+            ]);
+        } catch (RequestException $e) {
+            throw new \Exception($e->getMessage());
+        }
+
+        return true;
+    }
+
+    /**
+     * Post message to slack via API and token
+     *
+     * @param  String  $message
+     * @param  String $channel
+     * @return Boolean
+     */
+    private function postMessageToSlackByToken($message, $channel)
+    {
         try {
             $response = $this->client->request('POST', 'chat.postMessage',
             [
@@ -238,23 +313,5 @@ class SlackBot
                 return false;
             }
         }
-    }
-
-    /**
-     * Determine if message should be blocked by its provider
-     *
-     * @return boolean
-     */
-    private function shouldBlockByProvider()
-    {
-        if (!(
-            $this->ipResult and
-            property_exists($this->ipResult, 'org') and
-            !empty($this->blacklistProviders)
-        )) {
-            return false;
-        }
-        $pttrn = "#(".implode($this->blacklistProviders, "|").")#i";
-        return preg_match($pttrn, $this->ipResult->org);
     }
 }
