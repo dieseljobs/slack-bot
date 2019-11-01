@@ -291,7 +291,7 @@ class SlackBot
                 ]
             ]);
         } catch (RequestException $e) {
-            throw new \Exception($e->getMessage());
+            //throw new \Exception($e->getMessage());
         }
 
         $status = $response->getStatusCode();
