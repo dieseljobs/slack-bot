@@ -290,7 +290,7 @@ class SlackBot
                     'text'      => ">>>{$message}"
                 ]
             ]);
-        } catch (RequestException $e) {
+        } catch (\Exception $e) {
             //throw new \Exception($e->getMessage());
         }
 
