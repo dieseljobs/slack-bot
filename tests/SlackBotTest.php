@@ -9,7 +9,7 @@ class SlackBotTest extends TestCase
     public function setUp()
     {
         parent::setUp();
-        $this->app['config']->set('slack_bot.token', env('SLACK_TOKEN'));
+        $this->app['config']->set('slack_bot.webhook', env('SLACK_WEBHOOK'));
         $this->app['config']->set('slack_bot.username', env('SLACK_USERNAME'));
         $this->app['config']->set('slack_bot.emoji_icon', env('SLACK_EMOJI'));
         $this->app['config']->set('slack_bot.default_channel', env('SLACK_CHANNEL'));
@@ -53,5 +53,6 @@ class SlackBotTest extends TestCase
         # $this->app['config']->set('slack_bot.emoji_icon', env('SLACK_EMOJI'));
         $slackBot = $this->app->make('TheLHC\SlackBot\SlackBot');
         $chat = $slackBot->chat('test message', env('SLACK_WEBHOOK_CHANNEL'));
+        $this->assertEquals(true, $chat);
     }
 }
